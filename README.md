@@ -15,5 +15,5 @@ You have 5 options:
 2. Creating a wallet (with name)
 3. Checking balance of a wallet (by name)
 4. Airdrop to a wallet (by name)
-5. Transfer between wallets (buggy now)
+5. Transfer between wallets
 6. Transfer to different wallet (coming soon!)
