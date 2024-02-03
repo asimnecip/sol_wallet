@@ -56,12 +56,15 @@ function main() {
                 waitForEnter(main);
                 break;
             case '5':
-                readline.question("Enter sender wallet's Name: ", (walletName) => {
-                    (0, wallet_1.getWalletBalance)(walletName);
-                    readline.question("Enter receiver wallet's Name: ", (walletName) => {
+                readline.question("Enter sender wallet's Name: ", (senderWalletName) => {
+                    readline.question("Enter receiver wallet's Name: ", (receiverWalletName) => {
+                        readline.question("Enter amount: ", (amount) => {
+                            (0, wallet_1.transfer)(senderWalletName = senderWalletName, receiverWalletName = receiverWalletName, amount = amount);
+                        });
                     });
-                    waitForEnter(main);
                 });
+                waitForEnter(main);
+                break;
             case '0':
                 console.log("Exiting...");
                 readline.close();
