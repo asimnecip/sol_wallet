@@ -14,8 +14,8 @@ import * as path from 'path';
 
 const FILE_PATH = path.join(__dirname, 'wallets.json');
 
-const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
+const WSS_ENDPOINT = 'wss://api.devnet.solana.com/';
+const HTTP_ENDPOINT = 'https://api.devnet.solana.com';
 
 export interface WalletData {
     name:string,
@@ -46,11 +46,11 @@ export function getWallets():Array<WalletData>{
     return wallets;
 }
 
-export function createWallet(name: string) {
+export function createWallet(walletName: string) {
     const keypair = Keypair.generate();
 
     const walletData:WalletData = {
-        name:name,
+        name:walletName,
         balance: 0,
         publicKey: keypair.publicKey.toBase58(),
         // publicKey: keypair.publicKey,
@@ -59,6 +59,12 @@ export function createWallet(name: string) {
     };
 
     let wallets = getWallets();
+    // Check if a wallet with the same name already exists
+    if (wallets.some(wallet => wallet.name === walletName)) {
+        console.log("A wallet with the same name already exists.");
+        return;
+    }
+
     wallets.push(walletData);
     writeToDB(wallets);
     console.log(`New wallet created with '${name}' name!`);
@@ -89,11 +95,16 @@ export async function getWalletBalance(walletName: string, callback: () => void)
 
 
 export async function airdrop (walletName:string, amount:string, callback: () => void){
-    const amountToAirdrop = amount === '' ? LAMPORTS_PER_SOL : Number(amount);
+    const amountToAirdrop = amount === '' ? LAMPORTS_PER_SOL : parseFloat(amount)*LAMPORTS_PER_SOL;
 
     let wallets = getWallets();
-    let theWallet = wallets.find(wallet => wallet.name === walletName);
+    let theWallet;
+    let theWalletIndex = wallets.findIndex(wallet => wallet.name === walletName);
     
+    if (theWalletIndex !== -1) {
+        theWallet = wallets[theWalletIndex];
+    }
+
     if (!theWallet) {
         console.log(`Wallet named '${walletName}' does not exists!`);
         callback();
@@ -117,9 +128,13 @@ export async function airdrop (walletName:string, amount:string, callback: () =>
             );
             console.log('Starting web socket, subscription ID: ', subscriptionId);
             await sleep(5000);
+            console.log(amountToAirdrop);
             await solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
             await sleep(5000); 
             await solanaConnection.removeAccountChangeListener(subscriptionId);
+            
+            theWallet["balance"] += parseFloat(amount);
+            updateWallet(theWalletIndex, theWallet);
             console.log(`Websocket ID: ${subscriptionId} closed.`);
         })()        
         

@@ -37,8 +37,8 @@ const web3_js_1 = require("@solana/web3.js");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const FILE_PATH = path.join(__dirname, 'wallets.json');
-const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
+const WSS_ENDPOINT = 'wss://api.devnet.solana.com/';
+const HTTP_ENDPOINT = 'https://api.devnet.solana.com';
 function writeToDB(wallets) {
     fs.writeFileSync(FILE_PATH, JSON.stringify(wallets, null, 2), { encoding: 'utf8' });
 }
@@ -57,10 +57,10 @@ function getWallets() {
     return wallets;
 }
 exports.getWallets = getWallets;
-function createWallet(name) {
+function createWallet(walletName) {
     const keypair = web3_js_1.Keypair.generate();
     const walletData = {
-        name: name,
+        name: walletName,
         balance: 0,
         publicKey: keypair.publicKey.toBase58(),
         // publicKey: keypair.publicKey,
@@ -68,6 +68,11 @@ function createWallet(name) {
         // secretKey: keypair.secretKey,
     };
     let wallets = getWallets();
+    // Check if a wallet with the same name already exists
+    if (wallets.some(wallet => wallet.name === walletName)) {
+        console.log("A wallet with the same name already exists.");
+        return;
+    }
     wallets.push(walletData);
     writeToDB(wallets);
     console.log(`New wallet created with '${name}' name!`);
@@ -99,9 +104,13 @@ function getWalletBalance(walletName, callback) {
 exports.getWalletBalance = getWalletBalance;
 function airdrop(walletName, amount, callback) {
     return __awaiter(this, void 0, void 0, function* () {
-        const amountToAirdrop = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : Number(amount);
+        const amountToAirdrop = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : parseFloat(amount) * web3_js_1.LAMPORTS_PER_SOL;
         let wallets = getWallets();
-        let theWallet = wallets.find(wallet => wallet.name === walletName);
+        let theWallet;
+        let theWalletIndex = wallets.findIndex(wallet => wallet.name === walletName);
+        if (theWalletIndex !== -1) {
+            theWallet = wallets[theWalletIndex];
+        }
         if (!theWallet) {
             console.log(`Wallet named '${walletName}' does not exists!`);
             callback();
@@ -117,9 +126,12 @@ function airdrop(walletName, amount, callback) {
                 const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / web3_js_1.LAMPORTS_PER_SOL, ' SOL'), "confirmed");
                 console.log('Starting web socket, subscription ID: ', subscriptionId);
                 yield sleep(5000);
+                console.log(amountToAirdrop);
                 yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
                 yield sleep(5000);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);
+                theWallet["balance"] += parseFloat(amount);
+                updateWallet(theWalletIndex, theWallet);
                 console.log(`Websocket ID: ${subscriptionId} closed.`);
             }))();
         }

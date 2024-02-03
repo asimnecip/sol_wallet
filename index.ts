@@ -1,7 +1,5 @@
 import { createWallet, getWallets, getWalletBalance, WalletData, airdrop, transfer } from './wallet';
 
-// createWallet("FirstWalletOfMyLifeThatIsSaved");
-
 function waitForEnter(callback: () => void) {
   readline.question("\nPress Enter to continue...", () => {
     callback();
@@ -55,7 +53,6 @@ const readline = require('readline').createInterface({
                 await airdrop(walletName, amount, () => waitForEnter(main));
               });
             });
-          waitForEnter(main); 
           break;
       case '5':
           readline.question("\nEnter sender wallet's Name: ", async (senderWalletName:string) => {
@@ -70,7 +67,6 @@ const readline = require('readline').createInterface({
               });
             });
           });
-          waitForEnter(main);
           break; 
         case '0':
           console.log("Exiting...");

@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const wallet_1 = require("./wallet");
-// createWallet("FirstWalletOfMyLifeThatIsSaved");
 function waitForEnter(callback) {
     readline.question("\nPress Enter to continue...", () => {
         callback();
@@ -62,7 +61,6 @@ function main() {
                             yield (0, wallet_1.airdrop)(walletName, amount, () => waitForEnter(main));
                         }));
                     }));
-                    waitForEnter(main);
                     break;
                 case '5':
                     readline.question("\nEnter sender wallet's Name: ", (senderWalletName) => __awaiter(this, void 0, void 0, function* () {
@@ -72,7 +70,6 @@ function main() {
                             }));
                         }));
                     }));
-                    waitForEnter(main);
                     break;
                 case '0':
                     console.log("Exiting...");
