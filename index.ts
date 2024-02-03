@@ -1,4 +1,4 @@
-import { createWallet, getWallets, getWalletBalance, WalletData, airdrop } from './wallet';
+import { createWallet, getWallets, getWalletBalance, WalletData, airdrop, transfer } from './wallet';
 
 // createWallet("FirstWalletOfMyLifeThatIsSaved");
 
@@ -58,14 +58,20 @@ const readline = require('readline').createInterface({
             });
           waitForEnter(main); 
           break;
-        case '5':
-            readline.question("Enter sender wallet's Name: ", (walletName:string) => {
-              getWalletBalance(walletName);
-              readline.question("Enter receiver wallet's Name: ", (walletName:number) => {
-                
+      case '5':
+          readline.question("Enter sender wallet's Name: ", (senderWalletName:string) => {
+            readline.question("Enter receiver wallet's Name: ", (receiverWalletName:string) => {
+              readline.question("Enter amount: ", (amount:string) => {
+                transfer(
+                  senderWalletName=senderWalletName,
+                  receiverWalletName=receiverWalletName,
+                  amount=amount 
+                  );
               });
-              waitForEnter(main); 
             });
+          });
+          waitForEnter(main);
+          break; 
         case '0':
           console.log("Exiting...");
           readline.close();

@@ -1,8 +1,18 @@
-import { Connection, PublicKey, LAMPORTS_PER_SOL, Keypair } from '@solana/web3.js';
+import { 
+    Connection, 
+    PublicKey, 
+    LAMPORTS_PER_SOL, 
+    Keypair, 
+    Transaction,
+    SystemProgram,
+    sendAndConfirmTransaction,
+} from '@solana/web3.js';
+
 import * as fs from 'fs';
+import { get } from 'http';
 import * as path from 'path';
 
-const FILE_PATH = path.join(__dirname, 'wallet.json');
+const FILE_PATH = path.join(__dirname, 'wallets.json');
 
 const WSS_ENDPOINT = 'wss://api.devnet.solana.com/';
 const HTTP_ENDPOINT = 'https://api.devnet.solana.com';
@@ -10,8 +20,8 @@ const HTTP_ENDPOINT = 'https://api.devnet.solana.com';
 export interface WalletData {
     name:string,
     balance:number,
-    publicKey:string,
-    privateKey:Array<number>,
+    publicKey:PublicKey,
+    secretKey:Uint8Array,
 }
 
 function writeToDB(wallets: Array<WalletData>) {
@@ -34,8 +44,10 @@ export function createWallet(name: string) {
     const walletData:WalletData = {
         name:name,
         balance: 0,
-        publicKey: keypair.publicKey.toBase58(),
-        privateKey: Array.from(keypair.secretKey),
+        // publicKey: keypair.publicKey.toBase58(),
+        publicKey: keypair.publicKey,
+        // secretKey: Array.from(keypair.secretKey),
+        secretKey: keypair.secretKey,
     };
 
     let wallets = getWallets();
@@ -106,8 +118,62 @@ export function airdrop (walletName:string, amount:string){
         await sleep(10000); //Wait 10 for Socket Testing
         await solanaConnection.removeAccountChangeListener(subscriptionId);
         console.log(`Websocket ID: ${subscriptionId} closed.`);
-
     })()
 }
+
+export function transfer (senderWalletName:string, receiverWalletName:string, amount:string){
+
+    let wallets = getWallets();
+    let senderWallet = wallets.find(wallet => wallet.name === senderWalletName);
+    let receiverWallet = wallets.find(wallet => wallet.name === receiverWalletName);
+    const amountToSend = amount === '' ? LAMPORTS_PER_SOL : Number(amount);
+
+    if (senderWallet === undefined) {
+        // Handle the case where the wallet is not found
+        // For example, throw an error or return early
+        throw new Error("Wallet not found");
+      }
+    
+    let fromPubKey:PublicKey;
+    let toPubKey:PublicKey;
+    try {
+      fromPubKey = new PublicKey(senderWallet!.publicKey);
+    } catch (e) {
+      console.log(`Wallet named '${senderWalletName}' does not exists!`);
+      return;
+    }
+    try {
+        toPubKey = new PublicKey(receiverWallet!.publicKey);
+      } catch (e) {
+        console.log(`Wallet named '${receiverWalletName}' does not exists!`);
+        return;
+      }
+
+    const solanaConnection = new Connection(HTTP_ENDPOINT,{wsEndpoint:WSS_ENDPOINT});
+    const sleep = (ms:number) => {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    getWalletBalance(senderWalletName);
+    getWalletBalance(receiverWalletName);
+
+    (async () => {
+        const transaction = new Transaction().add(
+            SystemProgram.transfer({
+            fromPubkey: fromPubKey,
+            toPubkey: toPubKey,
+            lamports: amountToSend,
+            }),
+        );
+        
+        const signature = await sendAndConfirmTransaction(
+            solanaConnection,
+            transaction,
+            [senderWallet],
+        );
+        console.log('SIGNATURE', signature);
+    })()
+}
+
 
 
