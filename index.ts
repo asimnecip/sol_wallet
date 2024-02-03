@@ -3,7 +3,7 @@ import { createWallet, getWallets, getWalletBalance, WalletData, airdrop, transf
 // createWallet("FirstWalletOfMyLifeThatIsSaved");
 
 function waitForEnter(callback: () => void) {
-  readline.question("Press Enter to continue...", () => {
+  readline.question("\nPress Enter to continue...", () => {
     callback();
   });
 }
@@ -25,47 +25,47 @@ const readline = require('readline').createInterface({
   `);
   }
   
-  function main() {
+  async function main() {
     console.clear();
     showMenu();
     readline.question("Select an option: ", (option: string) => {
       switch (option) {
         case '1':
           let wallets = getWallets();
-          console.log("Available wallets:");
+          console.log("\nAvailable wallets:");
           wallets.forEach((wallet:WalletData, id:number) => {
-            console.log(`ID: ${id}, Owner: ${wallet.name}, Balance: ${wallet.balance}`);
+            console.log(`Name: ${wallet.name}, Balance: ${wallet.balance}`);
           });
           waitForEnter(main);
           break;
         case '2':
-          readline.question("Enter New Wallet Name: ", (name:string) => {
+          readline.question("\nEnter New Wallet Name: ", (name:string) => {
             createWallet(name);
             waitForEnter(main); 
         });
           break;
         case '3':
-          readline.question("Enter wallet Name: ", (walletName:string) => {
-            getWalletBalance(walletName);
+          readline.question("\nEnter wallet Name: ", async (walletName:string) => {
+            await getWalletBalance(walletName, () => waitForEnter(main));
           });
-          waitForEnter(main); 
           break;
         case '4':
-            readline.question("Enter wallet Name to airdrop: ", (walletName:string) => {
-              readline.question("Airdrop amount (default:1): ", (amount:string) => {
-                airdrop(walletName, amount);
+            readline.question("\nEnter wallet Name to airdrop: ", async (walletName:string) => {
+              readline.question("Airdrop amount (default:1): ", async (amount:string) => {
+                await airdrop(walletName, amount, () => waitForEnter(main));
               });
             });
           waitForEnter(main); 
           break;
       case '5':
-          readline.question("Enter sender wallet's Name: ", (senderWalletName:string) => {
-            readline.question("Enter receiver wallet's Name: ", (receiverWalletName:string) => {
-              readline.question("Enter amount: ", (amount:string) => {
-                transfer(
+          readline.question("\nEnter sender wallet's Name: ", async (senderWalletName:string) => {
+            readline.question("Enter receiver wallet's Name: ", async (receiverWalletName:string) => {
+              readline.question("Enter amount: ", async (amount:string) => {
+                await transfer(
                   senderWalletName=senderWalletName,
                   receiverWalletName=receiverWalletName,
-                  amount=amount 
+                  amount=amount,
+                  () => waitForEnter(main)
                   );
               });
             });
@@ -78,6 +78,7 @@ const readline = require('readline').createInterface({
           return;
         default:
           console.log("Invalid option. Please try again.");
+          waitForEnter(main)
           break;
       }
     });
