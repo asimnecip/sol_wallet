@@ -77,6 +77,7 @@ export async function getWalletBalance(
     walletName: string, 
     network:string = "d",
     callback: () => void,
+    internal:boolean = false,
     ) {
     let wallets = getWallets();
     let theWallet = wallets.find(wallet => wallet.name === walletName);
@@ -101,12 +102,17 @@ export async function getWalletBalance(
         const PUBLIC_KEY = new PublicKey(theWallet.publicKey);
         const solanaConnection = new Connection(httpEndpoint!, {wsEndpoint: wssEndpoint!});
         let balance = await solanaConnection.getBalance(PUBLIC_KEY);
-        console.log(`Balance of ${walletName} wallet is ${balance / LAMPORTS_PER_SOL} Sol`);
+        
+        if (!internal) {
+            console.log(`Balance of ${walletName} wallet is ${balance / LAMPORTS_PER_SOL} Sol`);
+        }
         return balance;
     } catch (e) {
         console.log(`Error getting balance for '${walletName}': ${e}`);
     } finally {
-        callback();
+        if (!internal) {
+            callback();
+        }
     }
 }
 
@@ -254,11 +260,11 @@ export async function transfer(
           );
           console.log('SIGNATURE', signature);
 
-        let senderWalletNewBalance = await getWalletBalance(senderWalletName, network, callback);
+        let senderWalletNewBalance = await getWalletBalance(senderWalletName, network, callback, true);
         senderWallet["balance"] = senderWalletNewBalance! / LAMPORTS_PER_SOL;
         updateWallet(senderWalletIndex, senderWallet);
 
-        let receiverWalletNewBalance = await getWalletBalance(receiverWalletName, network, callback);
+        let receiverWalletNewBalance = await getWalletBalance(receiverWalletName, network, callback, true);
         receiverWallet["balance"] = receiverWalletNewBalance! / LAMPORTS_PER_SOL;
         updateWallet(receiverWalletIndex, receiverWallet);
         

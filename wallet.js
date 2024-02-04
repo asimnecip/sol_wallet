@@ -79,7 +79,7 @@ function createWallet(walletName) {
     console.log(`New wallet created with '${walletName}' name!`);
 }
 exports.createWallet = createWallet;
-function getWalletBalance(walletName, network = "d", callback) {
+function getWalletBalance(walletName, network = "d", callback, internal = false) {
     return __awaiter(this, void 0, void 0, function* () {
         let wallets = getWallets();
         let theWallet = wallets.find(wallet => wallet.name === walletName);
@@ -102,14 +102,18 @@ function getWalletBalance(walletName, network = "d", callback) {
             const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
             const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
             let balance = yield solanaConnection.getBalance(PUBLIC_KEY);
-            console.log(`Balance of ${walletName} wallet is ${balance / web3_js_1.LAMPORTS_PER_SOL} Sol`);
+            if (!internal) {
+                console.log(`Balance of ${walletName} wallet is ${balance / web3_js_1.LAMPORTS_PER_SOL} Sol`);
+            }
             return balance;
         }
         catch (e) {
             console.log(`Error getting balance for '${walletName}': ${e}`);
         }
         finally {
-            callback();
+            if (!internal) {
+                callback();
+            }
         }
     });
 }
@@ -217,10 +221,10 @@ function transfer(senderWalletName, receiverWalletName, amount, network = 'd', c
                 }));
                 const signature = yield (0, web3_js_1.sendAndConfirmTransaction)(solanaConnection, transaction, [senderKeypair]);
                 console.log('SIGNATURE', signature);
-                let senderWalletNewBalance = yield getWalletBalance(senderWalletName, network, callback);
+                let senderWalletNewBalance = yield getWalletBalance(senderWalletName, network, callback, true);
                 senderWallet["balance"] = senderWalletNewBalance / web3_js_1.LAMPORTS_PER_SOL;
                 updateWallet(senderWalletIndex, senderWallet);
-                let receiverWalletNewBalance = yield getWalletBalance(receiverWalletName, network, callback);
+                let receiverWalletNewBalance = yield getWalletBalance(receiverWalletName, network, callback, true);
                 receiverWallet["balance"] = receiverWalletNewBalance / web3_js_1.LAMPORTS_PER_SOL;
                 updateWallet(receiverWalletIndex, receiverWallet);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);

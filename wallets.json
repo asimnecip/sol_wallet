@@ -1,7 +1,7 @@
 [
   {
     "name": "necip",
-    "balance": 3499.999995,
+    "balance": 3599.999995,
     "publicKey": "DEhJ8xWRgsnvWHSrJP1whzT3Sn3f9RqmKfDcAqt2qD5U",
     "secretKey": [
       184,
@@ -72,7 +72,7 @@
   },
   {
     "name": "nursel",
-    "balance": 500,
+    "balance": 399.999995,
     "publicKey": "J6iPqUEcjjBxawz9PVvGP7ZZ16RTGiZhbvS1V5xfSXC9",
     "secretKey": [
       61,
