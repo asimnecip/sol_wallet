@@ -133,9 +133,6 @@ function airdrop(walletName, amount, network = 'd', callback) {
             callback();
             return;
         }
-        const sleep = (ms) => {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        };
         let httpEndpoint;
         let wssEndpoint;
         if (network == "d") {
@@ -153,7 +150,13 @@ function airdrop(walletName, amount, network = 'd', callback) {
                 const subscriptionId = solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => 
                 // console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
                 console.log("Please wait for the process to finish..."), "confirmed");
-                yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
+                const signature = yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
+                const latestBlockHash = yield solanaConnection.getLatestBlockhash();
+                yield solanaConnection.confirmTransaction({
+                    blockhash: latestBlockHash.blockhash,
+                    lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+                    signature: signature,
+                });
                 theWallet["balance"] += amountToSOL;
                 updateWallet(theWalletIndex, theWallet);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);

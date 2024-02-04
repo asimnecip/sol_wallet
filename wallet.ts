@@ -141,10 +141,6 @@ export async function airdrop (
         return;
     }
 
-    const sleep = (ms:number) => {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      }
-
     let httpEndpoint;
     let wssEndpoint;
     if (network == "d") {
@@ -168,7 +164,16 @@ export async function airdrop (
                 "confirmed"
             );
             
-            await solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
+            const signature = await solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
+           
+            const latestBlockHash = await solanaConnection.getLatestBlockhash();
+
+            await solanaConnection.confirmTransaction({
+                blockhash: latestBlockHash.blockhash,
+                lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
+                signature: signature,
+              });
+              
             theWallet["balance"] += amountToSOL;
             updateWallet(theWalletIndex, theWallet);
 
