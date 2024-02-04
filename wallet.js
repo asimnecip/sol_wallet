@@ -37,8 +37,10 @@ const web3_js_1 = require("@solana/web3.js");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const FILE_PATH = path.join(__dirname, 'wallets.json');
-const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
+const WSS_LOCAL_ENDPOINT = "ws://localhost:8900";
+const HTTP_LOCAL_ENDPOINT = 'http://localhost:8899';
+const HTTP_DEVNET_ENDPOINT = 'https://api.devnet.solana.com';
+const WSS_DEVNET_ENDPOINT = 'wss://api.devnet.solana.com/';
 function writeToDB(wallets) {
     fs.writeFileSync(FILE_PATH, JSON.stringify(wallets, null, 2), { encoding: 'utf8' });
 }
@@ -68,7 +70,6 @@ function createWallet(walletName) {
         // secretKey: keypair.secretKey,
     };
     let wallets = getWallets();
-    // Check if a wallet with the same name already exists
     if (wallets.some(wallet => wallet.name === walletName)) {
         console.log("A wallet with the same name already exists.");
         return;
@@ -78,7 +79,7 @@ function createWallet(walletName) {
     console.log(`New wallet created with '${walletName}' name!`);
 }
 exports.createWallet = createWallet;
-function getWalletBalance(walletName, callback) {
+function getWalletBalance(walletName, network = "d", callback) {
     return __awaiter(this, void 0, void 0, function* () {
         let wallets = getWallets();
         let theWallet = wallets.find(wallet => wallet.name === walletName);
@@ -87,9 +88,19 @@ function getWalletBalance(walletName, callback) {
             callback();
             return;
         }
+        let httpEndpoint;
+        let wssEndpoint;
+        if (network == "d") {
+            httpEndpoint = HTTP_DEVNET_ENDPOINT;
+            wssEndpoint = WSS_DEVNET_ENDPOINT;
+        }
+        else if (network == "l") {
+            httpEndpoint = HTTP_LOCAL_ENDPOINT;
+            wssEndpoint = WSS_LOCAL_ENDPOINT;
+        }
         try {
             const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(HTTP_ENDPOINT, { wsEndpoint: WSS_ENDPOINT });
+            const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
             let balance = yield solanaConnection.getBalance(PUBLIC_KEY);
             console.log(`Balance of ${walletName} wallet is ${balance / web3_js_1.LAMPORTS_PER_SOL} Sol`);
         }
@@ -102,9 +113,10 @@ function getWalletBalance(walletName, callback) {
     });
 }
 exports.getWalletBalance = getWalletBalance;
-function airdrop(walletName, amount, callback) {
+function airdrop(walletName, amount, network = 'd', callback) {
     return __awaiter(this, void 0, void 0, function* () {
         const amountToAirdrop = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : parseFloat(amount) * web3_js_1.LAMPORTS_PER_SOL;
+        const amountToSOL = amountToAirdrop / web3_js_1.LAMPORTS_PER_SOL;
         let wallets = getWallets();
         let theWallet;
         let theWalletIndex = wallets.findIndex(wallet => wallet.name === walletName);
@@ -119,22 +131,25 @@ function airdrop(walletName, amount, callback) {
         const sleep = (ms) => {
             return new Promise(resolve => setTimeout(resolve, ms));
         };
+        let httpEndpoint;
+        let wssEndpoint;
+        if (network == "d") {
+            httpEndpoint = HTTP_DEVNET_ENDPOINT;
+            wssEndpoint = WSS_DEVNET_ENDPOINT;
+        }
+        else if (network == "l") {
+            httpEndpoint = HTTP_LOCAL_ENDPOINT;
+            wssEndpoint = WSS_LOCAL_ENDPOINT;
+        }
         try {
             const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(HTTP_ENDPOINT, { wsEndpoint: WSS_ENDPOINT });
+            const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
             (() => __awaiter(this, void 0, void 0, function* () {
                 const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / web3_js_1.LAMPORTS_PER_SOL, ' SOL'), "confirmed");
-                console.log('Starting web socket, subscription ID: ', subscriptionId);
-                yield sleep(5000);
-                console.log(amountToAirdrop);
                 yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
-                yield sleep(5000);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);
-                console.log("parseFloat(amount)");
-                console.log(parseFloat(amount).toString());
-                theWallet["balance"] += parseFloat(amount);
+                theWallet["balance"] += amountToSOL;
                 updateWallet(theWalletIndex, theWallet);
-                console.log(`Websocket ID: ${subscriptionId} closed.`);
             }))();
         }
         catch (e) {
@@ -151,7 +166,7 @@ function airdrop(walletName, amount, callback) {
     });
 }
 exports.airdrop = airdrop;
-function transfer(senderWalletName, receiverWalletName, amount, callback) {
+function transfer(senderWalletName, receiverWalletName, amount, network = 'd', callback) {
     return __awaiter(this, void 0, void 0, function* () {
         let wallets = getWallets();
         let senderWallet = wallets.find(wallet => wallet.name === senderWalletName);
@@ -167,10 +182,20 @@ function transfer(senderWalletName, receiverWalletName, amount, callback) {
             callback();
             return;
         }
+        let httpEndpoint;
+        let wssEndpoint;
+        if (network == "d") {
+            httpEndpoint = HTTP_DEVNET_ENDPOINT;
+            wssEndpoint = WSS_DEVNET_ENDPOINT;
+        }
+        else if (network == "l") {
+            httpEndpoint = HTTP_LOCAL_ENDPOINT;
+            wssEndpoint = WSS_LOCAL_ENDPOINT;
+        }
         try {
             const fromPubKey = new web3_js_1.PublicKey(senderWallet.publicKey);
             const toPubKey = new web3_js_1.PublicKey(receiverWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(HTTP_ENDPOINT, { wsEndpoint: WSS_ENDPOINT });
+            const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
             // Doğrudan json'daki wallet'ı kullanmak sorun oluşturdu, keypair'i rebuild etmek tek çözüm!
             const senderSecretKeyUint8Array = new Uint8Array(senderWallet.secretKey);
             const senderKeypair = web3_js_1.Keypair.fromSecretKey(senderSecretKeyUint8Array);

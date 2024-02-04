@@ -9,13 +9,15 @@ import {
 } from '@solana/web3.js';
 
 import * as fs from 'fs';
-import { get } from 'http';
 import * as path from 'path';
 
 const FILE_PATH = path.join(__dirname, 'wallets.json');
 
-const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
+const WSS_LOCAL_ENDPOINT = "ws://localhost:8900"
+const HTTP_LOCAL_ENDPOINT = 'http://localhost:8899';
+
+const HTTP_DEVNET_ENDPOINT = 'https://api.devnet.solana.com';
+const WSS_DEVNET_ENDPOINT = 'wss://api.devnet.solana.com/';
 
 export interface WalletData {
     name:string,
@@ -59,7 +61,7 @@ export function createWallet(walletName: string) {
     };
 
     let wallets = getWallets();
-    // Check if a wallet with the same name already exists
+
     if (wallets.some(wallet => wallet.name === walletName)) {
         console.log("A wallet with the same name already exists.");
         return;
@@ -71,7 +73,11 @@ export function createWallet(walletName: string) {
 }
 
 
-export async function getWalletBalance(walletName: string, callback: () => void) {
+export async function getWalletBalance(
+    walletName: string, 
+    network:string = "d",
+    callback: () => void,
+    ) {
     let wallets = getWallets();
     let theWallet = wallets.find(wallet => wallet.name === walletName);
 
@@ -81,9 +87,19 @@ export async function getWalletBalance(walletName: string, callback: () => void)
         return;
     }
 
+    let httpEndpoint;
+    let wssEndpoint;
+    if (network == "d") {
+        httpEndpoint = HTTP_DEVNET_ENDPOINT;
+        wssEndpoint = WSS_DEVNET_ENDPOINT;
+    } else if (network == "l") {
+        httpEndpoint = HTTP_LOCAL_ENDPOINT;
+        wssEndpoint = WSS_LOCAL_ENDPOINT;
+    }
+
     try {
         const PUBLIC_KEY = new PublicKey(theWallet.publicKey);
-        const solanaConnection = new Connection(HTTP_ENDPOINT, {wsEndpoint: WSS_ENDPOINT});
+        const solanaConnection = new Connection(httpEndpoint!, {wsEndpoint: wssEndpoint!});
         let balance = await solanaConnection.getBalance(PUBLIC_KEY);
         console.log(`Balance of ${walletName} wallet is ${balance / LAMPORTS_PER_SOL} Sol`);
     } catch (e) {
@@ -94,8 +110,15 @@ export async function getWalletBalance(walletName: string, callback: () => void)
 }
 
 
-export async function airdrop (walletName:string, amount:string, callback: () => void){
+export async function airdrop (
+    walletName:string, 
+    amount:string, 
+    network:string = 'd',
+    callback: () => void,
+    ){
+
     const amountToAirdrop = amount === '' ? LAMPORTS_PER_SOL : parseFloat(amount)*LAMPORTS_PER_SOL;
+    const amountToSOL = amountToAirdrop/LAMPORTS_PER_SOL
 
     let wallets = getWallets();
     let theWallet;
@@ -114,10 +137,21 @@ export async function airdrop (walletName:string, amount:string, callback: () =>
     const sleep = (ms:number) => {
         return new Promise(resolve => setTimeout(resolve, ms));
       }
-  
+
+    let httpEndpoint;
+    let wssEndpoint;
+    if (network == "d") {
+        httpEndpoint = HTTP_DEVNET_ENDPOINT;
+        wssEndpoint = WSS_DEVNET_ENDPOINT;
+    } else if (network == "l") {
+        httpEndpoint = HTTP_LOCAL_ENDPOINT;
+        wssEndpoint = WSS_LOCAL_ENDPOINT;
+    }
+
+
     try {
         const PUBLIC_KEY = new PublicKey(theWallet.publicKey);
-        const solanaConnection = new Connection(HTTP_ENDPOINT, {wsEndpoint: WSS_ENDPOINT});
+        const solanaConnection = new Connection(httpEndpoint!, {wsEndpoint: wssEndpoint});
         
         (async()=>{
             const subscriptionId = await solanaConnection.onAccountChange(
@@ -126,18 +160,11 @@ export async function airdrop (walletName:string, amount:string, callback: () =>
                     console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
                 "confirmed"
             );
-            console.log('Starting web socket, subscription ID: ', subscriptionId);
-            await sleep(5000);
-            console.log(amountToAirdrop);
             await solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
-            await sleep(5000); 
             await solanaConnection.removeAccountChangeListener(subscriptionId);
             
-            console.log("parseFloat(amount)");
-            console.log(parseFloat(amount).toString());
-            theWallet["balance"] += parseFloat(amount);
+            theWallet["balance"] += amountToSOL;
             updateWallet(theWalletIndex, theWallet);
-            console.log(`Websocket ID: ${subscriptionId} closed.`);
         })()        
         
     } catch (e) {
@@ -155,7 +182,9 @@ export async function transfer(
     senderWalletName:string, 
     receiverWalletName:string, 
     amount:string, 
-    callback: () => void){
+    network:string = 'd',
+    callback: () => void,
+    ){
 
     let wallets = getWallets();
     let senderWallet = wallets.find(wallet => wallet.name === senderWalletName);
@@ -171,11 +200,21 @@ export async function transfer(
         callback();
         return;
     }
-    
+
+    let httpEndpoint;
+    let wssEndpoint;
+    if (network == "d") {
+        httpEndpoint = HTTP_DEVNET_ENDPOINT;
+        wssEndpoint = WSS_DEVNET_ENDPOINT;
+    } else if (network == "l") {
+        httpEndpoint = HTTP_LOCAL_ENDPOINT;
+        wssEndpoint = WSS_LOCAL_ENDPOINT;
+    }
+
     try {
       const fromPubKey = new PublicKey(senderWallet.publicKey);
       const toPubKey = new PublicKey(receiverWallet.publicKey);
-      const solanaConnection = new Connection(HTTP_ENDPOINT,{wsEndpoint:WSS_ENDPOINT});
+      const solanaConnection = new Connection(httpEndpoint!, {wsEndpoint:wssEndpoint});
 
       // Doğrudan json'daki wallet'ı kullanmak sorun oluşturdu, keypair'i rebuild etmek tek çözüm!
       const senderSecretKeyUint8Array = new Uint8Array(senderWallet.secretKey);
