@@ -16,4 +16,3 @@ You have 5 options:
 3. Checking balance of a wallet (by name)
 4. Airdrop to a wallet (by name)
 5. Transfer between wallets
-6. Transfer to different wallet (coming soon!)
