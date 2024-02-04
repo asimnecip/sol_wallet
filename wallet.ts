@@ -102,6 +102,7 @@ export async function getWalletBalance(
         const solanaConnection = new Connection(httpEndpoint!, {wsEndpoint: wssEndpoint!});
         let balance = await solanaConnection.getBalance(PUBLIC_KEY);
         console.log(`Balance of ${walletName} wallet is ${balance / LAMPORTS_PER_SOL} Sol`);
+        return balance;
     } catch (e) {
         console.log(`Error getting balance for '${walletName}': ${e}`);
     } finally {
@@ -187,9 +188,17 @@ export async function transfer(
     ){
 
     let wallets = getWallets();
-    let senderWallet = wallets.find(wallet => wallet.name === senderWalletName);
-    let receiverWallet = wallets.find(wallet => wallet.name === receiverWalletName);
-    const amountToSend = amount === '' ? LAMPORTS_PER_SOL : Number(amount);
+
+    let senderWallet;
+    let senderWalletIndex = wallets.findIndex(wallet => wallet.name === senderWalletName);
+    if (senderWalletIndex !== -1) senderWallet = wallets[senderWalletIndex];
+
+    let receiverWallet;
+    let receiverWalletIndex = wallets.findIndex(wallet => wallet.name === receiverWalletName);
+    if (receiverWalletIndex !== -1) receiverWallet = wallets[receiverWalletIndex];
+
+    const amountToSend = amount === '' ? LAMPORTS_PER_SOL : parseFloat(amount)*LAMPORTS_PER_SOL;
+    const amountToSOL = amountToSend/LAMPORTS_PER_SOL
 
     if (!senderWallet) {
         console.log(`Wallet named '${senderWalletName}' does not exists!`);
@@ -221,13 +230,20 @@ export async function transfer(
       const senderKeypair = Keypair.fromSecretKey(senderSecretKeyUint8Array);
     
       (async () => {
+        const subscriptionId = await solanaConnection.onAccountChange(
+            fromPubKey,
+            (updatedAccountInfo) =>
+                console.log(`---Event Notification for ${fromPubKey.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
+            "confirmed"
+            );
+
           let transaction = new Transaction();
           
           transaction.add(
               SystemProgram.transfer({
               fromPubkey: fromPubKey,
               toPubkey: toPubKey,
-              lamports: amountToSend/100,
+              lamports: amountToSend,
               }),
           );
   
@@ -237,11 +253,22 @@ export async function transfer(
               [senderKeypair],
           );
           console.log('SIGNATURE', signature);
-      })()
+
+        let senderWalletNewBalance = await getWalletBalance(senderWalletName, network, callback);
+        senderWallet["balance"] = senderWalletNewBalance! / LAMPORTS_PER_SOL;
+        updateWallet(senderWalletIndex, senderWallet);
+
+        let receiverWalletNewBalance = await getWalletBalance(receiverWalletName, network, callback);
+        receiverWallet["balance"] = receiverWalletNewBalance! / LAMPORTS_PER_SOL;
+        updateWallet(receiverWalletIndex, receiverWallet);
+        
+        await solanaConnection.removeAccountChangeListener(subscriptionId);
+
+    })()
     
     } catch (e) {
         if (e instanceof Error && e.message.includes('429')) {
-            console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
+            console.log("You have requested too many transfer. Please wait 24 hours before trying again.");
         } else {
             console.log(`Error while transfer: ${e}`);
         }
