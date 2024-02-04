@@ -37,8 +37,10 @@ const web3_js_1 = require("@solana/web3.js");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const FILE_PATH = path.join(__dirname, 'wallets.json');
-const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
+const WSS_LOCAL_ENDPOINT = "ws://localhost:8900";
+const HTTP_LOCAL_ENDPOINT = 'http://localhost:8899';
+const HTTP_DEVNET_ENDPOINT = 'https://api.devnet.solana.com';
+const WSS_DEVNET_ENDPOINT = 'wss://api.devnet.solana.com/';
 function writeToDB(wallets) {
     fs.writeFileSync(FILE_PATH, JSON.stringify(wallets, null, 2), { encoding: 'utf8' });
 }
@@ -57,10 +59,10 @@ function getWallets() {
     return wallets;
 }
 exports.getWallets = getWallets;
-function createWallet(name) {
+function createWallet(walletName) {
     const keypair = web3_js_1.Keypair.generate();
     const walletData = {
-        name: name,
+        name: walletName,
         balance: 0,
         publicKey: keypair.publicKey.toBase58(),
         // publicKey: keypair.publicKey,
@@ -68,12 +70,16 @@ function createWallet(name) {
         // secretKey: keypair.secretKey,
     };
     let wallets = getWallets();
+    if (wallets.some(wallet => wallet.name === walletName)) {
+        console.log("A wallet with the same name already exists.");
+        return;
+    }
     wallets.push(walletData);
     writeToDB(wallets);
-    console.log(`New wallet created with '${name}' name!`);
+    console.log(`New wallet created with '${walletName}' name!`);
 }
 exports.createWallet = createWallet;
-function getWalletBalance(walletName, callback) {
+function getWalletBalance(walletName, network = "d", callback, internal = false) {
     return __awaiter(this, void 0, void 0, function* () {
         let wallets = getWallets();
         let theWallet = wallets.find(wallet => wallet.name === walletName);
@@ -82,26 +88,46 @@ function getWalletBalance(walletName, callback) {
             callback();
             return;
         }
+        let httpEndpoint;
+        let wssEndpoint;
+        if (network == "d") {
+            httpEndpoint = HTTP_DEVNET_ENDPOINT;
+            wssEndpoint = WSS_DEVNET_ENDPOINT;
+        }
+        else if (network == "l") {
+            httpEndpoint = HTTP_LOCAL_ENDPOINT;
+            wssEndpoint = WSS_LOCAL_ENDPOINT;
+        }
         try {
             const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(HTTP_ENDPOINT, { wsEndpoint: WSS_ENDPOINT });
+            const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
             let balance = yield solanaConnection.getBalance(PUBLIC_KEY);
-            console.log(`Balance of ${walletName} wallet is ${balance / web3_js_1.LAMPORTS_PER_SOL} Sol`);
+            if (!internal) {
+                console.log(`Balance of ${walletName} wallet is ${balance / web3_js_1.LAMPORTS_PER_SOL} Sol`);
+            }
+            return balance;
         }
         catch (e) {
             console.log(`Error getting balance for '${walletName}': ${e}`);
         }
         finally {
-            callback();
+            if (!internal) {
+                callback();
+            }
         }
     });
 }
 exports.getWalletBalance = getWalletBalance;
-function airdrop(walletName, amount, callback) {
+function airdrop(walletName, amount, network = 'd', callback) {
     return __awaiter(this, void 0, void 0, function* () {
-        const amountToAirdrop = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : Number(amount);
+        const amountToAirdrop = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : parseFloat(amount) * web3_js_1.LAMPORTS_PER_SOL;
+        const amountToSOL = amountToAirdrop / web3_js_1.LAMPORTS_PER_SOL;
         let wallets = getWallets();
-        let theWallet = wallets.find(wallet => wallet.name === walletName);
+        let theWallet;
+        let theWalletIndex = wallets.findIndex(wallet => wallet.name === walletName);
+        if (theWalletIndex !== -1) {
+            theWallet = wallets[theWalletIndex];
+        }
         if (!theWallet) {
             console.log(`Wallet named '${walletName}' does not exists!`);
             callback();
@@ -110,39 +136,56 @@ function airdrop(walletName, amount, callback) {
         const sleep = (ms) => {
             return new Promise(resolve => setTimeout(resolve, ms));
         };
-        try {
-            const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(HTTP_ENDPOINT, { wsEndpoint: WSS_ENDPOINT });
-            (() => __awaiter(this, void 0, void 0, function* () {
-                const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / web3_js_1.LAMPORTS_PER_SOL, ' SOL'), "confirmed");
-                console.log('Starting web socket, subscription ID: ', subscriptionId);
-                yield sleep(5000);
+        let httpEndpoint;
+        let wssEndpoint;
+        if (network == "d") {
+            httpEndpoint = HTTP_DEVNET_ENDPOINT;
+            wssEndpoint = WSS_DEVNET_ENDPOINT;
+        }
+        else if (network == "l") {
+            httpEndpoint = HTTP_LOCAL_ENDPOINT;
+            wssEndpoint = WSS_LOCAL_ENDPOINT;
+        }
+        const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
+        const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
+        (() => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => 
+                // console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
+                console.log("Please wait for the process to finish..."), "confirmed");
                 yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
-                yield sleep(5000);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);
-                console.log(`Websocket ID: ${subscriptionId} closed.`);
-            }))();
-        }
-        catch (e) {
-            if (e instanceof Error && e.message.includes('429')) {
-                console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
+                theWallet["balance"] += amountToSOL;
+                updateWallet(theWalletIndex, theWallet);
             }
-            else {
-                console.log(`Error while airdropping to '${walletName}': ${e}`);
+            catch (e) {
+                if (e instanceof Error && e.message.includes('429')) {
+                    console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
+                }
+                else {
+                    console.log(`Error while airdropping to '${walletName}': ${e}`);
+                }
             }
-        }
-        finally {
-            callback();
-        }
+            finally {
+                console.log("Airdrop has been completed. You can check your account!");
+                callback();
+            }
+        }))();
     });
 }
 exports.airdrop = airdrop;
-function transfer(senderWalletName, receiverWalletName, amount, callback) {
+function transfer(senderWalletName, receiverWalletName, amount, network = 'd', callback) {
     return __awaiter(this, void 0, void 0, function* () {
         let wallets = getWallets();
-        let senderWallet = wallets.find(wallet => wallet.name === senderWalletName);
-        let receiverWallet = wallets.find(wallet => wallet.name === receiverWalletName);
-        const amountToSend = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : Number(amount);
+        let senderWallet;
+        let senderWalletIndex = wallets.findIndex(wallet => wallet.name === senderWalletName);
+        if (senderWalletIndex !== -1)
+            senderWallet = wallets[senderWalletIndex];
+        let receiverWallet;
+        let receiverWalletIndex = wallets.findIndex(wallet => wallet.name === receiverWalletName);
+        if (receiverWalletIndex !== -1)
+            receiverWallet = wallets[receiverWalletIndex];
+        const amountToSend = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : parseFloat(amount) * web3_js_1.LAMPORTS_PER_SOL;
         if (!senderWallet) {
             console.log(`Wallet named '${senderWalletName}' does not exists!`);
             callback();
@@ -153,35 +196,54 @@ function transfer(senderWalletName, receiverWalletName, amount, callback) {
             callback();
             return;
         }
-        try {
-            const fromPubKey = new web3_js_1.PublicKey(senderWallet.publicKey);
-            const toPubKey = new web3_js_1.PublicKey(receiverWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(HTTP_ENDPOINT, { wsEndpoint: WSS_ENDPOINT });
-            // Doğrudan json'daki wallet'ı kullanmak sorun oluşturdu, keypair'i rebuild etmek tek çözüm!
-            const senderSecretKeyUint8Array = new Uint8Array(senderWallet.secretKey);
-            const senderKeypair = web3_js_1.Keypair.fromSecretKey(senderSecretKeyUint8Array);
-            (() => __awaiter(this, void 0, void 0, function* () {
+        let httpEndpoint;
+        let wssEndpoint;
+        if (network == "d") {
+            httpEndpoint = HTTP_DEVNET_ENDPOINT;
+            wssEndpoint = WSS_DEVNET_ENDPOINT;
+        }
+        else if (network == "l") {
+            httpEndpoint = HTTP_LOCAL_ENDPOINT;
+            wssEndpoint = WSS_LOCAL_ENDPOINT;
+        }
+        const fromPubKey = new web3_js_1.PublicKey(senderWallet.publicKey);
+        const toPubKey = new web3_js_1.PublicKey(receiverWallet.publicKey);
+        const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
+        // Doğrudan json'daki wallet'ı kullanmak sorun oluşturdu, keypair'i rebuild etmek tek çözüm!
+        const senderSecretKeyUint8Array = new Uint8Array(senderWallet.secretKey);
+        const senderKeypair = web3_js_1.Keypair.fromSecretKey(senderSecretKeyUint8Array);
+        (() => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const subscriptionId = yield solanaConnection.onAccountChange(fromPubKey, (updatedAccountInfo) => console.log("Please wait for the process to finish..."), "confirmed");
                 let transaction = new web3_js_1.Transaction();
                 transaction.add(web3_js_1.SystemProgram.transfer({
                     fromPubkey: fromPubKey,
                     toPubkey: toPubKey,
-                    lamports: amountToSend / 100,
+                    lamports: amountToSend,
                 }));
                 const signature = yield (0, web3_js_1.sendAndConfirmTransaction)(solanaConnection, transaction, [senderKeypair]);
-                console.log('SIGNATURE', signature);
-            }))();
-        }
-        catch (e) {
-            if (e instanceof Error && e.message.includes('429')) {
-                console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
+                // console.log('SIGNATURE', signature);
+                let senderWalletNewBalance = yield getWalletBalance(senderWalletName, network, callback, true);
+                senderWallet["balance"] = senderWalletNewBalance / web3_js_1.LAMPORTS_PER_SOL;
+                updateWallet(senderWalletIndex, senderWallet);
+                let receiverWalletNewBalance = yield getWalletBalance(receiverWalletName, network, callback, true);
+                receiverWallet["balance"] = receiverWalletNewBalance / web3_js_1.LAMPORTS_PER_SOL;
+                updateWallet(receiverWalletIndex, receiverWallet);
+                yield solanaConnection.removeAccountChangeListener(subscriptionId);
             }
-            else {
-                console.log(`Error while transfer: ${e}`);
+            catch (e) {
+                if (e instanceof Error && e.message.includes('429')) {
+                    console.log("You have requested too many transfer. Please wait 24 hours before trying again.");
+                }
+                else {
+                    console.log(`Error while transfer: ${e}`);
+                }
             }
-        }
-        finally {
-            callback();
-        }
+            finally {
+                console.log("Transfer has been completed. You can check your accounts!");
+                callback();
+            }
+        }))();
     });
 }
 exports.transfer = transfer;
