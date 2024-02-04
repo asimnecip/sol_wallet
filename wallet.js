@@ -146,28 +146,31 @@ function airdrop(walletName, amount, network = 'd', callback) {
             httpEndpoint = HTTP_LOCAL_ENDPOINT;
             wssEndpoint = WSS_LOCAL_ENDPOINT;
         }
-        try {
-            const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
-            (() => __awaiter(this, void 0, void 0, function* () {
-                const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / web3_js_1.LAMPORTS_PER_SOL, ' SOL'), "confirmed");
+        const PUBLIC_KEY = new web3_js_1.PublicKey(theWallet.publicKey);
+        const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
+        (() => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => 
+                // console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
+                console.log("Please wait for the process to finish..."), "confirmed");
                 yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);
                 theWallet["balance"] += amountToSOL;
                 updateWallet(theWalletIndex, theWallet);
-            }))();
-        }
-        catch (e) {
-            if (e instanceof Error && e.message.includes('429')) {
-                console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
             }
-            else {
-                console.log(`Error while airdropping to '${walletName}': ${e}`);
+            catch (e) {
+                if (e instanceof Error && e.message.includes('429')) {
+                    console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
+                }
+                else {
+                    console.log(`Error while airdropping to '${walletName}': ${e}`);
+                }
             }
-        }
-        finally {
-            callback();
-        }
+            finally {
+                console.log("Airdrop has been completed. You can check your account!");
+                callback();
+            }
+        }))();
     });
 }
 exports.airdrop = airdrop;
@@ -183,7 +186,6 @@ function transfer(senderWalletName, receiverWalletName, amount, network = 'd', c
         if (receiverWalletIndex !== -1)
             receiverWallet = wallets[receiverWalletIndex];
         const amountToSend = amount === '' ? web3_js_1.LAMPORTS_PER_SOL : parseFloat(amount) * web3_js_1.LAMPORTS_PER_SOL;
-        const amountToSOL = amountToSend / web3_js_1.LAMPORTS_PER_SOL;
         if (!senderWallet) {
             console.log(`Wallet named '${senderWalletName}' does not exists!`);
             callback();
@@ -204,15 +206,15 @@ function transfer(senderWalletName, receiverWalletName, amount, network = 'd', c
             httpEndpoint = HTTP_LOCAL_ENDPOINT;
             wssEndpoint = WSS_LOCAL_ENDPOINT;
         }
-        try {
-            const fromPubKey = new web3_js_1.PublicKey(senderWallet.publicKey);
-            const toPubKey = new web3_js_1.PublicKey(receiverWallet.publicKey);
-            const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
-            // Doğrudan json'daki wallet'ı kullanmak sorun oluşturdu, keypair'i rebuild etmek tek çözüm!
-            const senderSecretKeyUint8Array = new Uint8Array(senderWallet.secretKey);
-            const senderKeypair = web3_js_1.Keypair.fromSecretKey(senderSecretKeyUint8Array);
-            (() => __awaiter(this, void 0, void 0, function* () {
-                const subscriptionId = yield solanaConnection.onAccountChange(fromPubKey, (updatedAccountInfo) => console.log(`---Event Notification for ${fromPubKey.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / web3_js_1.LAMPORTS_PER_SOL, ' SOL'), "confirmed");
+        const fromPubKey = new web3_js_1.PublicKey(senderWallet.publicKey);
+        const toPubKey = new web3_js_1.PublicKey(receiverWallet.publicKey);
+        const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
+        // Doğrudan json'daki wallet'ı kullanmak sorun oluşturdu, keypair'i rebuild etmek tek çözüm!
+        const senderSecretKeyUint8Array = new Uint8Array(senderWallet.secretKey);
+        const senderKeypair = web3_js_1.Keypair.fromSecretKey(senderSecretKeyUint8Array);
+        (() => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const subscriptionId = yield solanaConnection.onAccountChange(fromPubKey, (updatedAccountInfo) => console.log("Please wait for the process to finish..."), "confirmed");
                 let transaction = new web3_js_1.Transaction();
                 transaction.add(web3_js_1.SystemProgram.transfer({
                     fromPubkey: fromPubKey,
@@ -220,7 +222,7 @@ function transfer(senderWalletName, receiverWalletName, amount, network = 'd', c
                     lamports: amountToSend,
                 }));
                 const signature = yield (0, web3_js_1.sendAndConfirmTransaction)(solanaConnection, transaction, [senderKeypair]);
-                console.log('SIGNATURE', signature);
+                // console.log('SIGNATURE', signature);
                 let senderWalletNewBalance = yield getWalletBalance(senderWalletName, network, callback, true);
                 senderWallet["balance"] = senderWalletNewBalance / web3_js_1.LAMPORTS_PER_SOL;
                 updateWallet(senderWalletIndex, senderWallet);
@@ -228,19 +230,20 @@ function transfer(senderWalletName, receiverWalletName, amount, network = 'd', c
                 receiverWallet["balance"] = receiverWalletNewBalance / web3_js_1.LAMPORTS_PER_SOL;
                 updateWallet(receiverWalletIndex, receiverWallet);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);
-            }))();
-        }
-        catch (e) {
-            if (e instanceof Error && e.message.includes('429')) {
-                console.log("You have requested too many transfer. Please wait 24 hours before trying again.");
             }
-            else {
-                console.log(`Error while transfer: ${e}`);
+            catch (e) {
+                if (e instanceof Error && e.message.includes('429')) {
+                    console.log("You have requested too many transfer. Please wait 24 hours before trying again.");
+                }
+                else {
+                    console.log(`Error while transfer: ${e}`);
+                }
             }
-        }
-        finally {
-            callback();
-        }
+            finally {
+                console.log("Transfer has been completed. You can check your accounts!");
+                callback();
+            }
+        }))();
     });
 }
 exports.transfer = transfer;

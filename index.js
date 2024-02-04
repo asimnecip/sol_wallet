@@ -36,7 +36,7 @@ function main() {
     return __awaiter(this, void 0, void 0, function* () {
         console.clear();
         if (!networkSelected) {
-            readline.question("Which network do you want to use? (e.g., mainnet, testnet): ", (network) => {
+            readline.question("Which network do you want to use? (d:devnet, l:local - default:devnet): ", (network) => {
                 console.log(`You have selected the ${network}.`);
                 currentNetwork = network;
                 networkSelected = true; // Set to true after asking the network question
