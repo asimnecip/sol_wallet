@@ -15,14 +15,23 @@ function waitForEnter(callback: () => void) {
 }
 
 function showMenu() {
+  let networkDescription;
+  if (currentNetwork == "l") {
+    networkDescription = "localhost";
+  } else if (currentNetwork == "d") {
+    networkDescription = "devnet";
+  }
   console.log(`
-Choose an option:
-1. List wallets
-2. Create wallet
-3. Get balance of a wallet
-4. Airdrop to a wallet
-5. Transfer between wallets
-0. Exit
+
+  -*- You are on ${networkDescription} network -*-
+
+  Choose an option:
+  1. List wallets
+  2. Create wallet
+  3. Get balance of a wallet
+  4. Airdrop to a wallet
+  5. Transfer between wallets
+  0. Exit
 `);
 }
 
@@ -34,6 +43,7 @@ async function main() {
       console.log(`You have selected the ${network}.`);
       currentNetwork = network;
       networkSelected = true; // Set to true after asking the network question
+      console.clear();
       showMenu();
       handleMenuSelection(currentNetwork);
     });

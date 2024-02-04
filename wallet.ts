@@ -160,18 +160,19 @@ export async function airdrop (
     
     (async()=>{
         try {
-            const subscriptionId = await solanaConnection.onAccountChange(
+            const subscriptionId = solanaConnection.onAccountChange(
                 PUBLIC_KEY,
                 (updatedAccountInfo) =>
-                    // console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
+                // console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
                 console.log("Please wait for the process to finish..."),
                 "confirmed"
             );
-            await solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
-            await solanaConnection.removeAccountChangeListener(subscriptionId);
             
+            await solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
             theWallet["balance"] += amountToSOL;
             updateWallet(theWalletIndex, theWallet);
+
+            await solanaConnection.removeAccountChangeListener(subscriptionId);
         } catch (e) {
             if (e instanceof Error && e.message.includes('429')) {
                 console.log("You have requested too many airdrops. Please wait 24 hours before trying again.");
@@ -236,29 +237,29 @@ export async function transfer(
 
     (async () => {
         try{
-            const subscriptionId = await solanaConnection.onAccountChange(
+            const subscriptionId = solanaConnection.onAccountChange(
                 fromPubKey,
                 (updatedAccountInfo) =>
                     console.log("Please wait for the process to finish..."),
                 "confirmed"
                 );
     
-                let transaction = new Transaction();
-                
-                transaction.add(
-                    SystemProgram.transfer({
-                    fromPubkey: fromPubKey,
-                    toPubkey: toPubKey,
-                    lamports: amountToSend,
-                    }),
-                );
-    
-                const signature = await sendAndConfirmTransaction(
-                    solanaConnection,
-                    transaction,
-                    [senderKeypair],
-                );
-                // console.log('SIGNATURE', signature);
+            let transaction = new Transaction();
+            
+            transaction.add(
+                SystemProgram.transfer({
+                fromPubkey: fromPubKey,
+                toPubkey: toPubKey,
+                lamports: amountToSend,
+                }),
+            );
+
+            const signature = await sendAndConfirmTransaction(
+                solanaConnection,
+                transaction,
+                [senderKeypair],
+            );
+            // console.log('SIGNATURE', signature);
     
             let senderWalletNewBalance = await getWalletBalance(senderWalletName, network, callback, true);
             senderWallet["balance"] = senderWalletNewBalance! / LAMPORTS_PER_SOL;

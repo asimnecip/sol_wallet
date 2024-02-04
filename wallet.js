@@ -150,13 +150,13 @@ function airdrop(walletName, amount, network = 'd', callback) {
         const solanaConnection = new web3_js_1.Connection(httpEndpoint, { wsEndpoint: wssEndpoint });
         (() => __awaiter(this, void 0, void 0, function* () {
             try {
-                const subscriptionId = yield solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => 
+                const subscriptionId = solanaConnection.onAccountChange(PUBLIC_KEY, (updatedAccountInfo) => 
                 // console.log(`---Event Notification for ${PUBLIC_KEY.toString()}--- \nNew Account Balance:`, updatedAccountInfo.lamports / LAMPORTS_PER_SOL, ' SOL'),
                 console.log("Please wait for the process to finish..."), "confirmed");
                 yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
-                yield solanaConnection.removeAccountChangeListener(subscriptionId);
                 theWallet["balance"] += amountToSOL;
                 updateWallet(theWalletIndex, theWallet);
+                yield solanaConnection.removeAccountChangeListener(subscriptionId);
             }
             catch (e) {
                 if (e instanceof Error && e.message.includes('429')) {
@@ -214,7 +214,7 @@ function transfer(senderWalletName, receiverWalletName, amount, network = 'd', c
         const senderKeypair = web3_js_1.Keypair.fromSecretKey(senderSecretKeyUint8Array);
         (() => __awaiter(this, void 0, void 0, function* () {
             try {
-                const subscriptionId = yield solanaConnection.onAccountChange(fromPubKey, (updatedAccountInfo) => console.log("Please wait for the process to finish..."), "confirmed");
+                const subscriptionId = solanaConnection.onAccountChange(fromPubKey, (updatedAccountInfo) => console.log("Please wait for the process to finish..."), "confirmed");
                 let transaction = new web3_js_1.Transaction();
                 transaction.add(web3_js_1.SystemProgram.transfer({
                     fromPubkey: fromPubKey,
