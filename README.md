@@ -1,7 +1,7 @@
 # sol_wallet
 Advanced Solana Bootcamp - 1st Assignment
 
-Solana Wallet management program, can be used only cli for now.
+Solana Wallet management program, can be used only on cli.
 
 Usage
 
