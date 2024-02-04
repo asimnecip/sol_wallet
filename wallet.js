@@ -37,8 +37,8 @@ const web3_js_1 = require("@solana/web3.js");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const FILE_PATH = path.join(__dirname, 'wallets.json');
-const WSS_ENDPOINT = 'wss://api.devnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.devnet.solana.com';
+const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
+const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
 function writeToDB(wallets) {
     fs.writeFileSync(FILE_PATH, JSON.stringify(wallets, null, 2), { encoding: 'utf8' });
 }
@@ -75,7 +75,7 @@ function createWallet(walletName) {
     }
     wallets.push(walletData);
     writeToDB(wallets);
-    console.log(`New wallet created with '${name}' name!`);
+    console.log(`New wallet created with '${walletName}' name!`);
 }
 exports.createWallet = createWallet;
 function getWalletBalance(walletName, callback) {
@@ -130,6 +130,8 @@ function airdrop(walletName, amount, callback) {
                 yield solanaConnection.requestAirdrop(PUBLIC_KEY, amountToAirdrop);
                 yield sleep(5000);
                 yield solanaConnection.removeAccountChangeListener(subscriptionId);
+                console.log("parseFloat(amount)");
+                console.log(parseFloat(amount).toString());
                 theWallet["balance"] += parseFloat(amount);
                 updateWallet(theWalletIndex, theWallet);
                 console.log(`Websocket ID: ${subscriptionId} closed.`);

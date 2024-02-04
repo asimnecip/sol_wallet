@@ -14,8 +14,8 @@ import * as path from 'path';
 
 const FILE_PATH = path.join(__dirname, 'wallets.json');
 
-const WSS_ENDPOINT = 'wss://api.devnet.solana.com/';
-const HTTP_ENDPOINT = 'https://api.devnet.solana.com';
+const WSS_ENDPOINT = 'wss://api.testnet.solana.com/';
+const HTTP_ENDPOINT = 'https://api.testnet.solana.com';
 
 export interface WalletData {
     name:string,
@@ -67,7 +67,7 @@ export function createWallet(walletName: string) {
 
     wallets.push(walletData);
     writeToDB(wallets);
-    console.log(`New wallet created with '${name}' name!`);
+    console.log(`New wallet created with '${walletName}' name!`);
 }
 
 
@@ -133,6 +133,8 @@ export async function airdrop (walletName:string, amount:string, callback: () =>
             await sleep(5000); 
             await solanaConnection.removeAccountChangeListener(subscriptionId);
             
+            console.log("parseFloat(amount)");
+            console.log(parseFloat(amount).toString());
             theWallet["balance"] += parseFloat(amount);
             updateWallet(theWalletIndex, theWallet);
             console.log(`Websocket ID: ${subscriptionId} closed.`);
