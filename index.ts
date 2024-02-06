@@ -8,6 +8,7 @@ const readline = require('readline').createInterface({
 let networkSelected = false; 
 let currentNetwork: string;
 
+// Just for making it practical I converted the "finished" log into a function
 function waitForEnter(callback: () => void) {
   readline.question("\nPress Enter to continue...", () => {
     callback();
@@ -21,6 +22,8 @@ function showMenu() {
   } else if (currentNetwork == "d") {
     networkDescription = "devnet";
   }
+
+  // Displaying options to choose
   console.log(`
 
   -*- You are on ${networkDescription} network -*-
@@ -39,6 +42,9 @@ async function main() {
   console.clear();
 
   if (!networkSelected) {
+    // DO NOT FORGET! : A KEYPAIR ON LOCAL NETWORK DIFFERENT FROM DEVNET NETWORK, EVEN THOUGH IT IS IDENTICAL. 
+    // WALLET CHANGES WHEN THE NETWORK CHANGES
+
     readline.question("Which network do you want to use? (d:devnet, l:local - default:devnet): ", (network: string) => {
       console.log(`You have selected the ${network}.`);
       currentNetwork = network;
@@ -53,6 +59,7 @@ async function main() {
   }
 }
 
+// This function will be called everytime when the user finished her/his process
 function handleMenuSelection(network: string) {
   readline.question("Select an option: ", (option: string) => {
     switch (option) {
